@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 关键：解决 GitHub Pages 上请求 DataV 地图 403 的问题 -->
+<meta name="referrer" content="no-referrer">
+<title>1949年以来中国流行病统计</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #0f1420;
+    color: #e8ecf3;
+  }
+  header {
+    padding: 20px 32px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-bottom: 1px solid #232b3d;
+  }
+  h1 { font-size: 22px; font-weight: 600; }
+  #updated-at { font-size: 13px; color: #8a94a8; }
+  .container { max-width: 1280px; margin: 0 auto; padding: 20px; }
+
+  .card {
+    background: #161d2e;
+    border: 1px solid #232b3d;
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 20px;
+  }
+  .card h2 { font-size: 16px; margin-bottom: 12px; font-weight: 600; }
+
+  .toolbar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .toolbar label { font-size: 13px; color: #8a94a8; }
+  select, button {
+    background: #1f2940; color: #e8ecf3;
+    border: 1px solid #33405e; border-radius: 6px;
+    padding: 6px 12px; font-size: 13px; cursor: pointer;
+  }
+  button.active { background: #2f6fed; border-color: #2f6fed; }
+
+  #trend-chart  { width: 100%; height: 380px; }
+  .split { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+  #map-chart    { width: 100%; height: 460px; }
+  #month-chart  { width: 100%; height: 260px; }
+
+  /* 年份信息单元 */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .stat {
+    background: #1c2436; border-radius: 8px; padding: 12px 16px;
+  }
+  .stat .label { font-size: 12px; color: #8a94a8; }
+  .stat .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  .stat .value.red { color: #ff6b6b; }
+  .stat .value.orange { color: #f7b25a; }
+  .tag {
+    display: inline-block; background: #24304a; color: #9fc1ff;
+    border-radius: 12px; padding: 3px 12px; font-size: 12px; margin: 3px 6px 3px 0;
+  }
+  .note { font-size: 12px; color: #6b768c; margin-top: 10px; line-height: 1.6; }
+  #year-range { width: 220px; accent-color: #2f6fed; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>1949年以来中国流行病统计</h1>
+  <span id="updated-at">数据更新中…</span>
+</header>
+
+<div class="container">
+
+  <!-- 全国年度趋势 -->
+  <div class="card">
+    <div class="toolbar">
+      <h2 style="flex:1">全国年度趋势（感染人数 / 死亡病例）</h2>
+      <label>图表类型</label>
+      <button id="btn-line" class="active" onclick="setTrendType('line')">折线图</button>
+      <button id="btn-bar" onclick="setTrendType('bar')">柱状图</button>
+      <label>对数刻度</label>
+      <input type="checkbox" id="log-scale" onchange="renderTrend()">
+    </div>
+    <div id="trend-chart"></div>
+    <div class="note">点击图表中任意年份可切换下方“年份详情”。</div>
+  </div>
+
+  <!-- 年份选择器（各年份为独立数据单元） -->
+  <div class="card">
+    <div class="toolbar">
+      <h2 style="flex:1">年份详情</h2>
+      <label>选择年份</label>
+      <select id="year-select" onchange="selectYear(+this.value)"></select>
+      <input type="range" id="year-range" min="1949" oninput="selectYear(+this.value)">
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="label">感染人数（例）</div><div class="value orange" id="st-cases">—</div></div>
+      <div class="stat"><div class="label">死亡病例（例）</div><div class="value red" id="st-deaths">—</div></div>
+      <div class="stat"><div class="label">主要疫病</div><div class="value" id="st-disease" style="font-size:15px">—</div></div>
+    </div>
+    <div id="hotspot-tags"></div>
+
+    <div class="split">
+      <div>
+        <h2 style="margin-top:16px">热点地区分布（中国地图）</h2>
+        <div id="map-chart"></div>
+      </div>
+      <div>
+        <h2 style="margin-top:16px">该年月度数据</h2>
+        <div id="month-chart"></div>
+        <div class="note" id="month-note">月度数据由 GitHub Actions 每月自动更新。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    数据来源说明：1949 年以来的年度法定传染病数据来源于历年《中国卫生统计年鉴 / 中国卫生健康统计年鉴》；
+    近期月度数据来源于国家卫生健康委员会每月发布的《全国法定传染病疫情概况》。
+    仓库中 data.json 内标注 "example": true 的记录为演示示例，请以年鉴/官方通报数据替换。
+  </div>
+</div>
+
+<script>
+const GEO_URL = 'https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json';
+
+let DATA = null;            // data.json 内容
+let trendChart, mapChart, monthChart;
+let trendType = 'line';
+let currentYear = null;
+
+/* ---------- 省份简称 -> GeoJSON 标准全称 ---------- */
+const NAME_ALIAS = {
+  '北京':'北京市','天津':'天津市','上海':'上海市','重庆':'重庆市',
+  '河北':'河北省','山西':'山西省','辽宁':'辽宁省','吉林':'吉林省',
+  '黑龙江':'黑龙江省','江苏':'江苏省','浙江':'浙江省','安徽':'安徽省',
+  '福建':'福建省','江西':'江西省','山东':'山东省','河南':'河南省',
+  '湖北':'湖北省','湖南':'湖南省','广东':'广东省','海南':'海南省',
+  '四川':'四川省','贵州':'贵州省','云南':'云南省','陕西':'陕西省',
+  '甘肃':'甘肃省','青海':'青海省','台湾':'台湾省',
+  '内蒙古':'内蒙古自治区','广西':'广西壮族自治区',
+  '西藏':'西藏自治区','宁夏':'宁夏回族自治区','新疆':'新疆维吾尔自治区',
+  '香港':'香港特别行政区','澳门':'澳门特别行政区'
+};
+const stdName = n => NAME_ALIAS[n] || n;
+
+const fmt = v => (v == null ? '暂无数据' : Number(v).toLocaleString('zh-CN'));
+
+/* ---------- 初始化 ---------- */
+async function init() {
+  const res = await fetch('data/data.json');
+  DATA = await res.json();
+  document.getElementById('updated-at').textContent =
+    '数据更新至 ' + (DATA.updatedAt || '未知');
+
+  // 年份选择器
+  const years = DATA.years.map(y => y.year);
+  const sel = document.getElementById('year-select');
+  years.forEach(y => {
+    const o = document.createElement('option');
+    o.value = y; o.textContent = y + ' 年';
+    sel.appendChild(o);
+  });
+  const range = document.getElementById('year-range');
+  range.min = Math.min(...years);
+  range.max = Math.max(...years);
+
+  trendChart = echarts.init(document.getElementById('trend-chart'));
+  mapChart   = echarts.init(document.getElementById('map-chart'));
+  monthChart = echarts.init(document.getElementById('month-chart'));
+
+  trendChart.on('click', p => selectYear(+p.name));
+
+  // 加载中国地图
+  const geo = await fetch(GEO_URL).then(r => r.json());
+  echarts.registerMap('china', geo);
+
+  renderTrend();
+  selectYear(years[years.length - 1]);
+
+  window.addEventListener('resize', () =>
+    [trendChart, mapChart, monthChart].forEach(c => c.resize()));
+}
+
+/* ---------- 全国年度趋势图 ---------- */
+function setTrendType(t) {
+  trendType = t;
+  document.getElementById('btn-line').classList.toggle('active', t === 'line');
+  document.getElementById('btn-bar').classList.toggle('active', t === 'bar');
+  renderTrend();
+}
+
+function renderTrend() {
+  const years = DATA.years.map(y => y.year);
+  const cases = DATA.years.map(y => y.infections);
+  const deaths = DATA.years.map(y => y.deaths);
+  const logAxis = document.getElementById('log-scale').checked;
+
+  trendChart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'axis',
+      formatter: ps => {
+        const y = ps[0].name;
+        let s = y + ' 年<br>';
+        ps.forEach(p => s += `${p.marker}${p.seriesName}：${fmt(p.value)} 例<br>`);
+        return s;
+      }},
+    legend: { data: ['感染人数', '死亡病例'], textStyle: { color: '#8a94a8' } },
+    grid: { left: 70, right: 60, top: 40, bottom: 40 },
+    xAxis: { type: 'category', data: years, axisLine: { lineStyle: { color: '#33405e' } } },
+    yAxis: [
+      { type: logAxis ? 'log' : 'value', name: '感染人数',
+        axisLabel: { color: '#8a94a8' }, splitLine: { lineStyle: { color: '#232b3d' } } },
+      { type: logAxis ? 'log' : 'value', name: '死亡病例',
+        axisLabel: { color: '#8a94a8' }, splitLine: { show: false } }
+    ],
+    series: [
+      { name: '感染人数', type: trendType, data: cases,
+        itemStyle: { color: '#f7b25a' }, lineStyle: { color: '#f7b25a' },
+        areaStyle: trendType === 'line' ? { opacity: 0.12 } : undefined, smooth: true },
+      { name: '死亡病例', type: 'bar', yAxisIndex: 1, data: deaths,
+        itemStyle: { color: '#ff6b6b' }, barMaxWidth: 10 }
+    ]
+  });
+}
+
+/* ---------- 年份单元切换 ---------- */
+function yearRec(y) { return DATA.years.find(r => r.year === y); }
+
+function selectYear(y) {
+  currentYear = y;
+  document.getElementById('year-select').value = y;
+  document.getElementById('year-range').value = y;
+
+  const rec = yearRec(y) || {};
+  document.getElementById('st-cases').textContent   = fmt(rec.infections);
+  document.getElementById('st-deaths').textContent  = fmt(rec.deaths);
+  document.getElementById('st-disease').textContent = (rec.diseases || []).join('、') || '—';
+
+  // 热点地区标签
+  const tags = document.getElementById('hotspot-tags');
+  tags.innerHTML = '';
+  (rec.hotspots || []).forEach(h =>
+    tags.insertAdjacentHTML('beforeend',
+      `<span class="tag">${h.name}　${fmt(h.cases)} 例</span>`));
+
+  renderMap(rec);
+  renderMonths(rec);
+}
+
+/* ---------- 中国地图：热点地区标注 ---------- */
+function renderMap(rec) {
+  const spots = (rec.hotspots || []).map(h => ({
+    name: stdName(h.name), value: h.cases
+  }));
+  const maxV = Math.max(1, ...spots.map(s => s.value || 0));
+
+  mapChart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'item',
+      formatter: p => p.value != null
+        ? `${p.name}<br>感染：${fmt(p.value)} 例`
+        : `${p.name}<br>无热点数据`
+    },
+    visualMap: {
+      min: 0, max: maxV, left: 10, bottom: 10,
+      text: ['高', '低'], textStyle: { color: '#8a94a8' },
+      inRange: { color: ['#1c2436', '#7a4a2b', '#c0392b'] },
+      calculable: true
+    },
+    series: [{
+      type: 'map', map: 'china', roam: true, zoom: 1.05,
+      label: { show: false },
+      itemStyle: { borderColor: '#33405e', areaColor: '#1c2436' },
+      emphasis: { label: { show: true, color: '#fff' },
+                  itemStyle: { areaColor: '#2f6fed' } },
+      data: spots
+    }]
+  });
+}
+
+/* ---------- 月度柱状图 ---------- */
+function renderMonths(rec) {
+  const months = (rec.months || []);
+  document.getElementById('month-note').textContent = months.length
+    ? '数据由 GitHub Actions 每月自动更新（' + months.length + ' 个月）。'
+    : '该年份暂无月度数据。';
+
+  monthChart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['感染人数', '死亡病例'], textStyle: { color: '#8a94a8' } },
+    grid: { left: 60, right: 50, top: 36, bottom: 30 },
+    xAxis: { type: 'category',
+      data: months.map(m => m.month.slice(5) + '月'),
+      axisLine: { lineStyle: { color: '#33405e' } } },
+    yAxis: [
+      { type: 'value', axisLabel: { color: '#8a94a8' },
+        splitLine: { lineStyle: { color: '#232b3d' } } },
+      { type: 'value', axisLabel: { color: '#8a94a8' }, splitLine: { show: false } }
+    ],
+    series: [
+      { name: '感染人数', type: 'bar', data: months.map(m => m.infections),
+        itemStyle: { color: '#f7b25a' } },
+      { name: '死亡病例', type: 'line', yAxisIndex: 1,
+        data: months.map(m => m.deaths),
+        itemStyle: { color: '#ff6b6b' }, lineStyle: { color: '#ff6b6b' } }
+    ]
+  });
+}
+
+init();
+</script>
+</body>
+</html>
