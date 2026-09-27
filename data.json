@@ -1,0 +1,66 @@
+{
+  "updatedAt": "2026-09-27",
+  "years": [
+    {
+      "year": 1949,
+      "infections": null,
+      "deaths": null,
+      "diseases": ["鼠疫", "天花", "霍乱"],
+      "hotspots": [],
+      "months": [],
+      "source": "中国卫生统计年鉴（待补充）",
+      "example": false
+    },
+    {
+      "year": 1988,
+      "infections": null,
+      "deaths": null,
+      "diseases": ["甲型肝炎（上海大流行，约31万人发病）"],
+      "hotspots": [{ "name": "上海", "cases": null }],
+      "months": [],
+      "source": "中国卫生统计年鉴（待补充）",
+      "example": false
+    },
+    {
+      "year": 2003,
+      "infections": 5327,
+      "deaths": 349,
+      "diseases": ["传染性非典型肺炎（SARS）"],
+      "hotspots": [
+        { "name": "广东", "cases": 1512 },
+        { "name": "北京", "cases": 2521 },
+        { "name": "山西", "cases": 445 }
+      ],
+      "months": [],
+      "source": "卫生部 2003 年 SARS 疫情公报",
+      "example": false
+    },
+    {
+      "year": 2020,
+      "infections": 87071,
+      "deaths": 4634,
+      "diseases": ["新型冠状病毒肺炎"],
+      "hotspots": [
+        { "name": "湖北", "cases": 68149 },
+        { "name": "广东", "cases": 2004 },
+        { "name": "浙江", "cases": 1368 }
+      ],
+      "months": [
+        { "month": "2020-01", "infections": 11791, "deaths": 259 },
+        { "month": "2020-02", "infections": 68033, "deaths": 2611 }
+      ],
+      "source": "国务院新闻办《抗击新冠肺炎疫情的中国行动》白皮书",
+      "example": false
+    },
+    {
+      "year": 2026,
+      "infections": null,
+      "deaths": null,
+      "diseases": [],
+      "hotspots": [],
+      "months": [],
+      "source": "由国家卫健委月度通报自动更新",
+      "example": false
+    }
+  ]
+}
